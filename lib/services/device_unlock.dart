@@ -62,9 +62,6 @@ class KeystoreDeviceUnlock implements DeviceUnlock {
     ),
   );
 
-  // Codes de BiometricPrompt : https://developer.android.com/reference/androidx/biometric/BiometricPrompt
-  static const _cancelCodes = {3, 5, 10, 13}; // délai, annulé, utilisateur, bouton Annuler
-
   Future<File> _marker() async =>
       File('${(await getApplicationSupportDirectory()).path}/$_markerName');
 
@@ -83,13 +80,13 @@ class KeystoreDeviceUnlock implements DeviceUnlock {
 
   @override
   Future<void> enable(List<int> key) async {
-    await _guard(() => _storage.write(key: _keyName, value: base64Encode(key)));
+    await guardDeviceAuth(() => _storage.write(key: _keyName, value: base64Encode(key)));
     await (await _marker()).writeAsString('1', flush: true);
   }
 
   @override
   Future<List<int>> readKey() async {
-    final value = await _guard(() => _storage.read(key: _keyName));
+    final value = await guardDeviceAuth(() => _storage.read(key: _keyName));
     if (value == null) {
       throw const DeviceUnlockFailure('Aucune clé enregistrée', permanent: true);
     }
@@ -106,20 +103,25 @@ class KeystoreDeviceUnlock implements DeviceUnlock {
       // Sans le marqueur, la clé ne sera plus utilisée.
     }
   }
+}
 
-  static Future<T> _guard<T>(Future<T> Function() action) async {
-    try {
-      return await action();
-    } on PlatformException catch (e) {
-      final text = '${e.message} ${e.details}';
-      final code = RegExp(r'Biometric authentication error \[(\d+)\]').firstMatch(text);
-      if (code != null && _cancelCodes.contains(int.parse(code[1]!))) {
-        throw const DeviceUnlockCancelled();
-      }
-      throw DeviceUnlockFailure(
-        text,
-        permanent: text.contains('KeyPermanentlyInvalidated') || text.contains('UnrecoverableKey'),
-      );
+// Codes de BiometricPrompt : https://developer.android.com/reference/androidx/biometric/BiometricPrompt
+const _cancelCodes = {3, 5, 10, 13}; // délai, annulé, utilisateur, bouton Annuler
+
+/// Traduit les erreurs de flutter_secure_storage en [DeviceUnlockCancelled]
+/// ou [DeviceUnlockFailure].
+Future<T> guardDeviceAuth<T>(Future<T> Function() action) async {
+  try {
+    return await action();
+  } on PlatformException catch (e) {
+    final text = '${e.message} ${e.details}';
+    final code = RegExp(r'Biometric authentication error \[(\d+)\]').firstMatch(text);
+    if (code != null && _cancelCodes.contains(int.parse(code[1]!))) {
+      throw const DeviceUnlockCancelled();
     }
+    throw DeviceUnlockFailure(
+      text,
+      permanent: text.contains('KeyPermanentlyInvalidated') || text.contains('UnrecoverableKey'),
+    );
   }
 }

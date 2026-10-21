@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/brand.dart';
 import '../widgets/strength_meter.dart';
 import 'about_screen.dart';
+import 'recovery_flow.dart';
 
 /// Création du coffre (premier lancement) ou déverrouillage.
 class LockScreen extends StatefulWidget {
@@ -64,6 +65,9 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
           'Le téléphone ne reconnaît plus votre clé, par exemple après un changement du '
               'verrouillage d\'écran. Saisissez votre mot de passe maître, puis réactivez '
               'l\'empreinte depuis le menu.',
+        DeviceUnlockOutcome.masterPasswordRequired =>
+          'Mise à jour de sécurité : saisissez une fois votre mot de passe maître pour '
+              'activer la récupération par questions.',
         _ => null,
       };
     });
@@ -181,8 +185,9 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
         const SizedBox(height: 8),
         Text(
           _creating
-              ? 'Ce mot de passe maître chiffre tous vos identifiants. Il ne peut pas '
-                    'être récupéré en cas d\'oubli : notez-le en lieu sûr.'
+              ? 'Ce mot de passe maître chiffre tous vos identifiants. En cas d\'oubli, trois '
+                    'questions personnelles vous permettront d\'en choisir un nouveau, sur ce '
+                    'téléphone uniquement.'
               : _deviceUnlock
               ? 'Utilisez votre empreinte, le code du téléphone ou votre mot de passe maître.'
               : 'Saisissez votre mot de passe maître pour accéder à vos identifiants.',
@@ -197,6 +202,19 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
           ),
           child: passwordField,
         ),
+        if (!_creating && widget.vault.recoverySupported)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ForgotPasswordScreen(vault: widget.vault)),
+                    ),
+              child: const Text('Mot de passe oublié ?'),
+            ),
+          ),
         if (_creating) ...[
           const SizedBox(height: 12),
           StrengthMeter(password: _password.text),

@@ -10,6 +10,8 @@ Gestionnaire de mots de passe Flutter, hors ligne : vos identifiants ne quittent
   nouvelle version (`termsVersion` dans `lib/legal/terms.dart`).
 - **Page « À propos »** : version, fonctionnement de la sécurité, conditions et licences des
   logiciels libres. Accessible depuis le menu et l'écran de verrouillage.
+- **Mot de passe oublié** : récupération grâce à trois questions personnelles fixes et au code du
+  téléphone, sans perte de données (voir « Récupération » ci-dessous).
 - **Coffre chiffré** protégé par un mot de passe maître (créé au premier lancement, au moins 8 caractères).
 - **Entrées** : titre, identifiant, mot de passe, site web et notes ; ajout, modification, suppression et recherche.
 - **Générateur de mots de passe** : longueur de 8 à 64, minuscules, majuscules, chiffres et symboles, avec un indicateur de robustesse.
@@ -43,6 +45,34 @@ est demandé. Une annulation ou un échec passager (trop d'essais) ne le désact
 La dérivation PBKDF2 est implémentée dans `lib/services/pbkdf2.dart`. Cette version optimisée est
 environ 4 fois plus rapide que l'implémentation générique en Dart pur. Elle est vérifiée par les
 vecteurs de la RFC 7914 et par comparaison avec le package `cryptography`.
+
+## Récupération du mot de passe maître
+
+Le coffre est chiffré par une **clé de coffre** aléatoire (256 bits), elle-même verrouillée deux
+fois :
+
+```
+                  ┌─ verrou 1 : mot de passe maître (PBKDF2-HMAC-SHA256, 600 000 itérations)
+clé du coffre ────┤
+                  └─ verrou 2 : 3 réponses (PBKDF2, 200 000 itérations, un sel par réponse)
+                               + secret du Keystore Android (code ou empreinte exigé)
+```
+
+- **Réponses jamais enregistrées** : les trois dérivations sont combinées par HKDF-SHA256 en une
+  seule clé. On ne peut pas vérifier une réponse isolément, et le message d'erreur est générique.
+- **Aucune attaque hors ligne** : le secret matériel ne quitte pas le Keystore. Le fichier du coffre
+  seul ne permet pas de tester des réponses.
+- **Limitation** : 3 essais libres, puis 30 s, 1 min, 5 min, 15 min et 1 h. La tentative est comptée
+  avant la vérification et stockée chiffrée par le Keystore.
+- **Anti-rejeu** : l'autorisation obtenue ne sert qu'une fois, expire au bout de 5 minutes et est
+  annulée dès que l'application passe en arrière-plan. Chaque verrou est lié à son coffre (AES-GCM,
+  données associées).
+- **Réinitialisation** : seul le verrou 1 est refait ; les données, les réponses et le déverrouillage
+  par empreinte restent valables.
+- **Migration** : un coffre à l'ancien format (v1) est converti à la première ouverture avec le mot de
+  passe maître, puis la configuration des questions est imposée.
+- Si le verrouillage d'écran du téléphone est supprimé, le Keystore détruit son secret : la
+  récupération est désactivée et sera redemandée à la prochaine ouverture.
 
 ## Identité visuelle
 
@@ -79,6 +109,8 @@ lib/
     secure_clipboard.dart    Copie avec effacement automatique
     device_unlock.dart       Déverrouillage par empreinte ou code (Keystore)
     terms_service.dart       Acceptation des conditions d'utilisation
+    vault_file.dart          Format du coffre (verrous, données)
+    recovery_*.dart          Questions, secret du Keystore, limitation des tentatives
   theme/app_theme.dart       Couleurs, typographie et composants
   screens/                   Verrouillage, liste, édition, générateur
   widgets/                   Logo, bouclier, jauge de robustesse, affichage des mots de passe

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:maxsecurepass/legal/terms.dart';
 import 'package:maxsecurepass/main.dart';
 import 'package:maxsecurepass/models/vault_entry.dart';
 import 'package:maxsecurepass/services/terms_service.dart';
@@ -162,7 +163,7 @@ void main() {
     await tester.tap(button);
     await tester.pumpAndSettle();
     expect(find.text('Créer le coffre'), findsOneWidget);
-    expect(store.data, contains('"version":1'));
+    expect(store.data, contains('"version":$termsVersion'));
   });
 
   testWidgets('la page À propos affiche la version, les conditions et les licences', (

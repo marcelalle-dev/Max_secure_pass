@@ -75,6 +75,13 @@ class AboutScreen extends StatelessWidget {
                     'les tentatives de devinette.',
               ),
               const _Fact(
+                icon: Icons.lock_reset_rounded,
+                title: 'Récupération par questions',
+                body:
+                    'Vos réponses ne sont jamais enregistrées. Avec le code du téléphone, '
+                    'elles permettent de choisir un nouveau mot de passe sans perdre vos données.',
+              ),
+              const _Fact(
                 icon: Icons.fingerprint_rounded,
                 title: 'Empreinte ou code, en option',
                 body:
@@ -88,6 +95,18 @@ class AboutScreen extends StatelessWidget {
                     'Verrouillage dès que vous quittez l\'application, captures d\'écran '
                     'bloquées, presse-papiers vidé après 30 secondes.',
               ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const _Section(
+            title: 'Équipe',
+            children: [
+              _Member(
+                name: 'ALLE Sourou Marcel',
+                role: 'Développeur web / mobile et concepteur des solutions numériques',
+              ),
+              Divider(indent: 72),
+              _Member(name: 'HOUINDO Sessi Ange', role: 'Analyste qualité logicielle'),
             ],
           ),
           const SizedBox(height: 20),
@@ -190,6 +209,56 @@ class _Fact extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   body,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Member extends StatelessWidget {
+  const _Member({required this.name, required this.role});
+
+  final String name;
+  final String role;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: theme.colorScheme.primaryContainer,
+            child: Text(
+              name.split(' ').where((w) => w.isNotEmpty).take(2).map((w) => w[0]).join(),
+              style: TextStyle(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  role,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

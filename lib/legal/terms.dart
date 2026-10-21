@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/material.dart' show IconData, Icons;
 
-const termsVersion = 1;
+const termsVersion = 2;
 
 /// Date d'entrée en vigueur de [termsVersion].
 final termsDate = DateTime(2026, 10, 21);
@@ -27,8 +27,9 @@ const termsHighlights = <(IconData, String, String)>[
   ),
   (
     Icons.key_rounded,
-    'Le mot de passe maître est irrécupérable',
-    'Personne ne peut le réinitialiser. Sans lui, le coffre ne peut plus être ouvert.',
+    'Mot de passe oublié : récupération sur ce téléphone',
+    'Avec vos trois réponses personnelles et le code du téléphone. Sans eux, le coffre ne '
+        'peut plus être ouvert.',
   ),
   (
     Icons.cloud_off_rounded,
@@ -57,9 +58,24 @@ const termsSections = [
   TermsSection(
     'Mot de passe maître',
     'Vous choisissez votre mot de passe maître et vous êtes seul à le connaître : il n\'est '
-        'enregistré nulle part. Il ne peut être ni récupéré ni réinitialisé. En cas d\'oubli, '
-        'le contenu du coffre est définitivement inaccessible. Choisissez un mot de passe '
-        'robuste, que vous n\'utilisez nulle part ailleurs, et conservez-le en lieu sûr.',
+        'enregistré nulle part et ne peut pas être retrouvé. En cas d\'oubli, il ne peut être '
+        'remplacé que grâce aux questions de récupération décrites ci-dessous. Choisissez un '
+        'mot de passe robuste, que vous n\'utilisez nulle part ailleurs.',
+  ),
+  TermsSection(
+    'Questions de récupération',
+    'Lors de la création du coffre, vous répondez à trois questions personnelles fixes. Vos '
+        'réponses ne sont enregistrées nulle part, ni en clair ni chiffrées : elles servent, '
+        'avec un secret conservé par le système de sécurité du téléphone (Keystore Android), à '
+        'protéger une copie de la clé du coffre. En cas d\'oubli du mot de passe maître, ces '
+        'trois réponses et le code ou l\'empreinte du téléphone permettent d\'en choisir un '
+        'nouveau, sans perte de données, sur ce téléphone uniquement. Les tentatives sont '
+        'limitées et espacées par un délai croissant. Toute personne connaissant vos réponses '
+        'et ayant accès à votre téléphone déverrouillé pourrait remplacer votre mot de passe '
+        'maître : choisissez des réponses que vos proches ou les réseaux sociaux ne révèlent '
+        'pas, et ne les communiquez à personne. Si le verrouillage d\'écran du téléphone est '
+        'supprimé ou réinitialisé, la récupération cesse de fonctionner et doit être '
+        'reconfigurée après ouverture du coffre avec le mot de passe maître.',
   ),
   TermsSection(
     'Déverrouillage par empreinte ou code',

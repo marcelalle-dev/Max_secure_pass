@@ -1,11 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'screens/lock_screen.dart';
+import 'screens/recovery_setup_screen.dart';
 import 'screens/terms_screen.dart';
 import 'screens/vault_screen.dart';
 import 'services/device_unlock.dart';
+import 'services/recovery_guard.dart';
+import 'services/recovery_secret.dart';
 import 'services/terms_service.dart';
 import 'services/vault_service.dart';
 import 'services/vault_storage.dart';
@@ -14,8 +19,13 @@ import 'theme/app_theme.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(_fontLicenses);
-  final vault = VaultService(storage: FileVaultStorage(), deviceUnlock: KeystoreDeviceUnlock())
-    ..init();
+  final vault = VaultService(
+    storage: FileVaultStorage(),
+    deviceUnlock: KeystoreDeviceUnlock(),
+    // La récupération repose sur le Keystore Android.
+    recoverySecret: Platform.isAndroid ? KeystoreRecoverySecretStore() : null,
+    attemptStore: Platform.isAndroid ? SecureAttemptStore() : null,
+  )..init();
   final terms = TermsService(FileTermsStore())..load();
   runApp(MaxSecurePassApp(vault: vault, terms: terms));
 }
@@ -96,6 +106,10 @@ class _MaxSecurePassAppState extends State<MaxSecurePassApp> {
               vault: vault,
               terms: terms,
             ),
+            // Les questions de récupération doivent être configurées avant
+            // d'accéder au coffre.
+            VaultStatus.unlocked when vault.recoverySupported && !vault.recoveryConfigured =>
+              RecoverySetupScreen(vault: vault),
             VaultStatus.unlocked => VaultScreen(vault: vault, terms: terms),
           };
         },

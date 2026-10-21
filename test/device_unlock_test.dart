@@ -94,18 +94,16 @@ void main() {
     expect(vault.deviceUnlockEnabled, isFalse);
   });
 
-  test('changer le mot de passe maître met à jour la clé du téléphone', () async {
+  test('changer le mot de passe maître ne touche pas au déverrouillage par le téléphone', () async {
     await vault.enableDeviceUnlock();
+    final prompts = device.prompts;
     await vault.changeMasterPassword('mot de passe maître', 'nouveau mot de passe');
+    // La clé de coffre est inchangée : aucune nouvelle demande d'empreinte.
+    expect(device.prompts, prompts);
+    expect(vault.deviceUnlockEnabled, isTrue);
     vault.lock();
     expect(await vault.unlockWithDevice(), DeviceUnlockOutcome.unlocked);
-  });
-
-  test('si la mise à jour échoue, l\'option est désactivée', () async {
-    await vault.enableDeviceUnlock();
-    device.nextAnswer = false;
-    await vault.changeMasterPassword('mot de passe maître', 'nouveau mot de passe');
-    expect(vault.deviceUnlockEnabled, isFalse);
+    expect(vault.entries.single.password, 'secret');
   });
 
   test('le verrouillage volontaire est mémorisé', () async {
