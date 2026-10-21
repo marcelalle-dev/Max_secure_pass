@@ -124,3 +124,59 @@ flutter analyze
 flutter test
 flutter run
 ```
+
+## Publication sur Google Play
+
+La version release est signée avec la **clé d'importation** décrite dans `android/key.properties`
+(exclu de Git ; modèle : `android/key.properties.example`). Sans ce fichier, `flutter build
+appbundle --release` s'arrête volontairement : Google Play refuse les bundles signés en debug.
+
+Avec la signature d'application Google Play, Google conserve la **clé de signature de
+l'application** ; vous ne détenez que la clé d'importation. En cas de perte, celle-ci peut être
+réinitialisée par le support Google Play.
+
+### 1. Créer la clé d'importation (une seule fois, Windows PowerShell)
+
+```powershell
+# Dossier HORS du projet
+New-Item -ItemType Directory -Force "$env:USERPROFILE\cles"
+
+# keytool est fourni avec Android Studio
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v `
+  -keystore "$env:USERPROFILE\cles\maxsecurepass-upload.jks" `
+  -storetype PKCS12 -keyalg RSA -keysize 4096 -validity 10000 -alias upload
+```
+
+Le mot de passe demandé sert pour `storePassword` **et** `keyPassword` (format PKCS12).
+Sauvegardez le fichier `.jks` et son mot de passe dans un endroit sûr, distinct du PC.
+
+### 2. Configurer la signature
+
+```powershell
+Copy-Item android\key.properties.example android\key.properties
+notepad android\key.properties
+```
+
+Renseignez `storeFile` avec des barres obliques, par exemple
+`C:/Users/VotreNom/cles/maxsecurepass-upload.jks`.
+
+### 3. Générer et vérifier le bundle
+
+```powershell
+flutter clean
+flutter pub get
+flutter analyze
+flutter test
+flutter build appbundle --release
+
+Test-Path build\app\outputs\bundle\release\app-release.aab
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -printcert `
+  -jarfile build\app\outputs\bundle\release\app-release.aab
+```
+
+La dernière commande doit afficher **votre** certificat, et non « Android Debug ».
+
+### 4. Versions suivantes
+
+Augmentez `version` dans `pubspec.yaml` avant chaque envoi : le numéro après `+` (versionCode)
+doit toujours croître, par exemple `1.0.0+1` puis `1.0.1+2`.

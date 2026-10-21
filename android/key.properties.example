@@ -1,0 +1,11 @@
+# Modèle de configuration de la signature de publication (clé d'importation Google Play).
+#
+# 1. Copiez ce fichier en android/key.properties (ce fichier-là est exclu de Git).
+# 2. Remplacez les valeurs. Ne versionnez JAMAIS key.properties ni le fichier .jks.
+#
+# storeFile : chemin du fichier .jks, de préférence HORS du projet.
+#   Sous Windows, utilisez des barres obliques : C:/Users/VotreNom/cles/maxsecurepass-upload.jks
+storeFile=C:/Users/VotreNom/cles/maxsecurepass-upload.jks
+storePassword=MOT_DE_PASSE_DU_FICHIER_JKS
+keyAlias=upload
+keyPassword=MOT_DE_PASSE_DE_LA_CLE

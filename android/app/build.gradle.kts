@@ -1,7 +1,25 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Signature de publication (clé d'importation Google Play), lue dans
+// android/key.properties. Ce fichier contient des secrets : il est exclu de Git.
+// Modèle : android/key.properties.example.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+val hasReleaseKey = keystorePropertiesFile.exists()
+if (hasReleaseKey) {
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+    val missing =
+        listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+            .filter { keystoreProperties.getProperty(it).isNullOrBlank() }
+    if (missing.isNotEmpty()) {
+        throw GradleException("android/key.properties : valeur(s) manquante(s) : ${missing.joinToString()}")
+    }
 }
 
 android {
@@ -26,11 +44,22 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
@@ -43,6 +72,23 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// Sans clé de publication, une compilation release s'arrête : Google Play
+// refuse les bundles signés avec la clé de debug ou non signés.
+gradle.taskGraph.whenReady {
+    val releaseTask =
+        allTasks.any { task ->
+            task.project == project &&
+                task.name.contains("Release") &&
+                listOf("bundle", "assemble", "package").any { task.name.startsWith(it) }
+        }
+    if (releaseTask && !hasReleaseKey) {
+        throw GradleException(
+            "Signature de publication absente : créez android/key.properties " +
+                "(modèle : android/key.properties.example).",
+        )
+    }
 }
 
 dependencies {
