@@ -2,7 +2,12 @@
     <application
         android:label="Max SecurePass"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
+        <!-- Pas de sauvegarde automatique : les données restent sur le téléphone, et la clé
+             Keystore du déverrouillage par empreinte ne serait de toute façon pas restaurable. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

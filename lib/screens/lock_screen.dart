@@ -3,16 +3,19 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/terms_service.dart';
 import '../services/vault_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand.dart';
 import '../widgets/strength_meter.dart';
+import 'about_screen.dart';
 
 /// Création du coffre (premier lancement) ou déverrouillage.
 class LockScreen extends StatefulWidget {
-  const LockScreen({super.key, required this.vault});
+  const LockScreen({super.key, required this.vault, required this.terms});
 
   final VaultService vault;
+  final TermsService terms;
 
   @override
   State<LockScreen> createState() => _LockScreenState();
@@ -231,6 +234,16 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
             label: const Text('Empreinte ou code'),
           ),
         ],
+        const SizedBox(height: 16),
+        Center(
+          child: TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AboutScreen(terms: widget.terms)),
+            ),
+            child: const Text('À propos'),
+          ),
+        ),
       ],
     );
   }

@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import '../models/vault_entry.dart';
 import '../services/device_unlock.dart';
 import '../services/secure_clipboard.dart';
+import '../services/terms_service.dart';
 import '../services/vault_service.dart';
 import '../widgets/brand.dart';
+import 'about_screen.dart';
 import 'entry_screen.dart';
 import 'generator_sheet.dart';
 
 /// Liste des identifiants du coffre déverrouillé, groupés par initiale.
 class VaultScreen extends StatefulWidget {
-  const VaultScreen({super.key, required this.vault});
+  const VaultScreen({super.key, required this.vault, required this.terms});
 
   final VaultService vault;
+  final TermsService terms;
 
   @override
   State<VaultScreen> createState() => _VaultScreenState();
@@ -150,6 +153,13 @@ class _VaultScreenState extends State<VaultScreen> {
               PopupMenuItem(
                 onTap: _changeMasterPassword,
                 child: const Text('Changer le mot de passe maître'),
+              ),
+              PopupMenuItem(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AboutScreen(terms: widget.terms)),
+                ),
+                child: const Text('À propos'),
               ),
             ],
           ),

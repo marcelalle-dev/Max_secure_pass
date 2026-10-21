@@ -42,32 +42,36 @@ class SplitShieldPainter extends CustomPainter {
   bool shouldRepaint(SplitShieldPainter old) => old.shoulder != shoulder || old.flank != flank;
 }
 
-/// Petit bouclier portant l'initiale d'une entrée.
+/// Petit bouclier portant l'initiale d'une entrée, ou une icône.
 class ShieldAvatar extends StatelessWidget {
-  const ShieldAvatar({super.key, required this.label});
+  const ShieldAvatar({super.key, required String this.label}) : icon = null, size = 40;
 
-  final String label;
+  const ShieldAvatar.icon(IconData this.icon, {super.key, this.size = 32}) : label = null;
+
+  final String? label;
+  final IconData? icon;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    final initial = label.isEmpty ? '?' : label.characters.first.toUpperCase();
+    final label = this.label;
+    final Widget content;
+    if (label != null) {
+      content = Text(
+        label.isEmpty ? '?' : label.characters.first.toUpperCase(),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: size * 0.42),
+      );
+    } else {
+      content = Icon(icon, color: Colors.white, size: size * 0.5);
+    }
     return SizedBox(
-      width: 40,
-      height: 46,
+      width: size,
+      height: size * 1.15,
       child: CustomPaint(
         painter: const SplitShieldPainter(),
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Center(
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-              ),
-            ),
-          ),
+          padding: EdgeInsets.only(bottom: size * 0.15),
+          child: Center(child: content),
         ),
       ),
     );

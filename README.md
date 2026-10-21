@@ -6,6 +6,10 @@ Gestionnaire de mots de passe Flutter, hors ligne : vos identifiants ne quittent
 
 ## Fonctionnalités
 
+- **Conditions d'utilisation** à accepter au premier lancement (case à cocher), puis à chaque
+  nouvelle version (`termsVersion` dans `lib/legal/terms.dart`).
+- **Page « À propos »** : version, fonctionnement de la sécurité, conditions et licences des
+  logiciels libres. Accessible depuis le menu et l'écran de verrouillage.
 - **Coffre chiffré** protégé par un mot de passe maître (créé au premier lancement, au moins 8 caractères).
 - **Entrées** : titre, identifiant, mot de passe, site web et notes ; ajout, modification, suppression et recherche.
 - **Générateur de mots de passe** : longueur de 8 à 64, minuscules, majuscules, chiffres et symboles, avec un indicateur de robustesse.
@@ -29,7 +33,8 @@ La clé et les entrées déchiffrées ne restent en mémoire que tant que le cof
 **Le mot de passe maître ne peut pas être récupéré** : en cas d'oubli, le coffre est perdu.
 
 L'application ne demande pas l'autorisation Internet : en version release, elle ne peut rien
-envoyer sur le réseau.
+envoyer sur le réseau. La sauvegarde automatique d'Android et le transfert vers un autre appareil
+sont désactivés (`allowBackup="false"`, `res/xml/data_extraction_rules.xml`).
 
 Si la clé enregistrée ne correspond plus au coffre (par exemple après un changement du
 verrouillage d'écran), le déverrouillage par le téléphone est désactivé et le mot de passe maître
@@ -63,6 +68,7 @@ L'interface reprend le logo (bouclier bleu et clé en forme de « M ») :
 ```
 lib/
   main.dart                  Application, verrouillage automatique
+  legal/terms.dart           Texte et version des conditions d'utilisation
   models/vault_entry.dart    Modèle d'une entrée
   services/
     vault_service.dart       État du coffre (créer, déverrouiller, enregistrer…)
@@ -72,6 +78,7 @@ lib/
     password_generator.dart  Générateur et estimation de robustesse
     secure_clipboard.dart    Copie avec effacement automatique
     device_unlock.dart       Déverrouillage par empreinte ou code (Keystore)
+    terms_service.dart       Acceptation des conditions d'utilisation
   theme/app_theme.dart       Couleurs, typographie et composants
   screens/                   Verrouillage, liste, édition, générateur
   widgets/                   Logo, bouclier, jauge de robustesse, affichage des mots de passe
