@@ -127,6 +127,9 @@ flutter run
 
 ## Publication sur Google Play
 
+Fiche du Play Store, visuels, captures et réponses aux formulaires de la Play Console :
+voir [`store/README.md`](store/README.md). Politique de confidentialité : `docs/` (GitHub Pages).
+
 La version release est signée avec la **clé d'importation** décrite dans `android/key.properties`
 (exclu de Git ; modèle : `android/key.properties.example`). Sans ce fichier, `flutter build
 appbundle --release` s'arrête volontairement : Google Play refuse les bundles signés en debug.

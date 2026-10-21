@@ -6,17 +6,16 @@ library;
 
 import 'package:flutter/material.dart' show IconData, Icons;
 
+import 'legal_text.dart';
+
+export 'legal_text.dart';
+
 const termsVersion = 2;
 
 /// Date d'entrée en vigueur de [termsVersion].
 final termsDate = DateTime(2026, 10, 21);
 
-class TermsSection {
-  const TermsSection(this.title, this.body);
-
-  final String title;
-  final String body;
-}
+typedef TermsSection = LegalSection;
 
 /// Les points essentiels, résumés en tête de l'écran d'acceptation.
 const termsHighlights = <(IconData, String, String)>[
@@ -119,11 +118,3 @@ const termsSections = [
         'l\'utiliser.',
   ),
 ];
-
-const _months = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin', //
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
-/// « 21 octobre 2026 ».
-String formatFrenchDate(DateTime date) => '${date.day} ${_months[date.month - 1]} ${date.year}';

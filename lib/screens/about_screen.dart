@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../legal/privacy.dart' show contactEmail;
 import '../services/terms_service.dart';
 import '../services/vault_cipher.dart';
 import '../widgets/brand.dart';
+import 'privacy_screen.dart';
 import 'terms_screen.dart';
 
 /// Présentation de l'application : version, sécurité, conditions, licences.
@@ -120,6 +123,31 @@ class AboutScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(builder: (_) => TermsScreen(terms: terms)),
                 ),
+              ),
+              const Divider(indent: 56),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Politique de confidentialité'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PrivacyScreen()),
+                ),
+              ),
+              const Divider(indent: 56),
+              ListTile(
+                leading: const Icon(Icons.mail_outline_rounded),
+                title: const Text('Nous contacter'),
+                subtitle: const Text(contactEmail),
+                trailing: const Icon(Icons.content_copy_rounded, size: 20),
+                onTap: () async {
+                  // Pas d'accès à Internet ni d'appli de messagerie : on copie l'adresse.
+                  await Clipboard.setData(const ClipboardData(text: contactEmail));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(const SnackBar(content: Text('Adresse copiée')));
+                },
               ),
               const Divider(indent: 56),
               ListTile(
