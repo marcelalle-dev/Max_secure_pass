@@ -1,14 +1,25 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'screens/lock_screen.dart';
 import 'screens/vault_screen.dart';
 import 'services/vault_service.dart';
 import 'services/vault_storage.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(_fontLicenses);
   final vault = VaultService(storage: FileVaultStorage())..init();
   runApp(MaxSecurePassApp(vault: vault));
+}
+
+Stream<LicenseEntry> _fontLicenses() async* {
+  for (final font in ['Sora', 'JetBrainsMono']) {
+    final text = await rootBundle.loadString('assets/fonts/$font-OFL.txt');
+    yield LicenseEntryWithLineBreaks([font], text);
+  }
 }
 
 class MaxSecurePassApp extends StatefulWidget {
@@ -48,19 +59,16 @@ class _MaxSecurePassAppState extends State<MaxSecurePassApp> {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF1B5E20);
     return MaterialApp(
       title: 'Max SecurePass',
       navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: seed)),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.dark),
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       home: ListenableBuilder(
         listenable: widget.vault,
         builder: (context, _) => switch (widget.vault.status) {
-          VaultStatus.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          VaultStatus.loading => const Scaffold(body: SizedBox.expand()),
           VaultStatus.uninitialized ||
           VaultStatus.locked => LockScreen(key: ValueKey(widget.vault.status), vault: widget.vault),
           VaultStatus.unlocked => VaultScreen(vault: widget.vault),

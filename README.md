@@ -29,6 +29,25 @@ La dérivation PBKDF2 est implémentée dans `lib/services/pbkdf2.dart`. Cette v
 environ 4 fois plus rapide que l'implémentation générique en Dart pur. Elle est vérifiée par les
 vecteurs de la RFC 7914 et par comparaison avec le package `cryptography`.
 
+## Identité visuelle
+
+L'interface reprend le logo (bouclier bleu et clé en forme de « M ») :
+
+| Rôle | Couleur |
+| --- | --- |
+| Bleu signal : actions, moitié gauche du bouclier | `#0262F4` |
+| Bleu profond : moitié droite du bouclier | `#023EB8` |
+| Marine : texte, fond du thème sombre | `#080E28` |
+| Glacier : fond du thème clair | `#EEF3FD` |
+
+- Polices : **Sora** pour l'interface, **JetBrains Mono** pour les mots de passe (chiffres en bleu,
+  symboles en orange, pour distinguer l/1/I et O/0). Les deux sont sous licence OFL et incluses
+  dans `assets/fonts/`.
+- L'écran de verrouillage reprend le logo en grand : un en-tête en forme de bouclier bicolore,
+  avec la clé au centre.
+- Les identifiants sont groupés par initiale, chacun avec un petit bouclier.
+- Thèmes clair et sombre, icône Android adaptative et écran de démarrage aux couleurs du logo.
+
 ## Structure
 
 ```
@@ -42,8 +61,9 @@ lib/
     vault_storage.dart       Stockage fichier (et mémoire pour les tests)
     password_generator.dart  Générateur et estimation de robustesse
     secure_clipboard.dart    Copie avec effacement automatique
+  theme/app_theme.dart       Couleurs, typographie et composants
   screens/                   Verrouillage, liste, édition, générateur
-  widgets/strength_meter.dart
+  widgets/                   Logo, bouclier, jauge de robustesse, affichage des mots de passe
 ```
 
 ## Développement

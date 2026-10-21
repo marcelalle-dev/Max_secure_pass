@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../models/vault_entry.dart';
 import '../services/secure_clipboard.dart';
 import '../services/vault_service.dart';
+import '../widgets/brand.dart';
 import 'entry_screen.dart';
 import 'generator_sheet.dart';
 
-/// Liste des entrées du coffre déverrouillé.
+/// Liste des identifiants du coffre déverrouillé, groupés par initiale.
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key, required this.vault});
 
@@ -31,9 +32,11 @@ class _VaultScreenState extends State<VaultScreen> {
   Future<void> _copyPassword(VaultEntry entry) async {
     await SecureClipboard.copy(entry.password);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Mot de passe de « ${entry.title} » copié (effacé dans 30 s)')),
-    );
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('Mot de passe de ${entry.title} copié. Effacé dans 30 s.')),
+      );
   }
 
   Future<void> _changeMasterPassword() async {
@@ -52,19 +55,30 @@ class _VaultScreenState extends State<VaultScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Max SecurePass'),
+        titleSpacing: 16,
+        title: const Row(
+          children: [
+            BrandMark(size: 30),
+            SizedBox(width: 10),
+            Flexible(
+              child: FittedBox(fit: BoxFit.scaleDown, child: Wordmark(fontSize: 19)),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Générateur',
-            icon: const Icon(Icons.casino_outlined),
+            icon: const Icon(Icons.password_rounded),
             onPressed: () => showGeneratorSheet(context),
           ),
           IconButton(
             tooltip: 'Verrouiller',
-            icon: const Icon(Icons.lock_outline),
+            icon: const Icon(Icons.lock_rounded),
             onPressed: widget.vault.lock,
           ),
           PopupMenuButton<void>(
+            tooltip: 'Plus d\'options',
+            icon: const Icon(Icons.more_vert_rounded),
             itemBuilder: (_) => [
               PopupMenuItem(
                 onTap: _changeMasterPassword,
@@ -72,6 +86,7 @@ class _VaultScreenState extends State<VaultScreen> {
               ),
             ],
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: ListenableBuilder(
@@ -82,39 +97,26 @@ class _VaultScreenState extends State<VaultScreen> {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: SearchBar(
-                  hintText: 'Rechercher',
-                  leading: const Icon(Icons.search),
-                  elevation: const WidgetStatePropertyAll(0),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: TextField(
+                  key: const Key('search'),
                   onChanged: (v) => setState(() => _query = v),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: switch (all.length) {
+                      0 => 'Rechercher',
+                      1 => 'Rechercher parmi 1 identifiant',
+                      final n => 'Rechercher parmi $n identifiants',
+                    },
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
               ),
               Expanded(
                 child: entries.isEmpty
-                    ? _EmptyState(searching: all.isNotEmpty)
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 88),
-                        itemCount: entries.length,
-                        itemBuilder: (context, i) {
-                          final entry = entries[i];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              child: Text(entry.title.characters.first.toUpperCase()),
-                            ),
-                            title: Text(entry.title),
-                            subtitle: entry.username.isEmpty ? null : Text(entry.username),
-                            trailing: entry.password.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Copier le mot de passe',
-                                    icon: const Icon(Icons.copy),
-                                    onPressed: () => _copyPassword(entry),
-                                  ),
-                            onTap: () => _open(entry),
-                          );
-                        },
-                      ),
+                    ? _EmptyState(query: all.isEmpty ? null : _query)
+                    : _GroupedList(entries: entries, onOpen: _open, onCopy: _copyPassword),
               ),
             ],
           );
@@ -122,39 +124,161 @@ class _VaultScreenState extends State<VaultScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _open,
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded),
         label: const Text('Ajouter'),
       ),
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.searching});
+/// Identifiants groupés par initiale, un bloc par lettre.
+class _GroupedList extends StatelessWidget {
+  const _GroupedList({required this.entries, required this.onOpen, required this.onCopy});
 
-  final bool searching;
+  final List<VaultEntry> entries;
+  final void Function(VaultEntry) onOpen;
+  final void Function(VaultEntry) onCopy;
+
+  static String _letter(VaultEntry e) {
+    final c = e.title.isEmpty ? '#' : e.title.characters.first.toUpperCase();
+    return RegExp(r'[A-ZÀ-Ý]').hasMatch(c) ? c : '#';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
+    final groups = <String, List<VaultEntry>>{};
+    for (final e in entries) {
+      groups.putIfAbsent(_letter(e), () => []).add(e);
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 104),
+      children: [
+        for (final MapEntry(key: letter, value: items) in groups.entries) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 14, 8, 8),
+            child: Text(
+              letter,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Material(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(18),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0) const Divider(indent: 72),
+                  _EntryTile(
+                    entry: items[i],
+                    onTap: () => onOpen(items[i]),
+                    onCopy: () => onCopy(items[i]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _EntryTile extends StatelessWidget {
+  const _EntryTile({required this.entry, required this.onTap, required this.onCopy});
+
+  final VaultEntry entry;
+  final VoidCallback onTap;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+        child: Row(
+          children: [
+            ShieldAvatar(label: entry.title),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  if (entry.username.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      entry.username,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (entry.password.isNotEmpty)
+              IconButton(
+                tooltip: 'Copier le mot de passe',
+                color: theme.colorScheme.primary,
+                icon: const Icon(Icons.content_copy_rounded, size: 22),
+                onPressed: onCopy,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  /// `null` quand le coffre est vide ; sinon, la recherche sans résultat.
+  const _EmptyState({required this.query});
+
+  final String? query;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final empty = query == null;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(40, 24, 40, 104),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              searching ? Icons.search_off : Icons.key_outlined,
-              size: 64,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
+            if (empty)
+              const BrandMark(size: 88)
+            else
+              Icon(Icons.search_off_rounded, size: 56, color: theme.colorScheme.outline),
+            const SizedBox(height: 20),
             Text(
-              searching
-                  ? 'Aucun résultat'
-                  : 'Votre coffre est vide.\nAjoutez votre premier mot de passe.',
+              empty ? 'Votre coffre est vide' : 'Aucun résultat pour « ${query!.trim()} »',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge,
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              empty
+                  ? 'Ajoutez votre premier identifiant. Seul le titre est obligatoire.'
+                  : 'La recherche porte sur le titre, l\'identifiant et le site web.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -221,17 +345,19 @@ class _ChangeMasterPasswordDialogState extends State<_ChangeMasterPasswordDialog
               obscureText: true,
               decoration: InputDecoration(labelText: 'Mot de passe actuel', errorText: _error),
             ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _next,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Nouveau mot de passe'),
               validator: (v) => (v ?? '').length < min ? 'Au moins $min caractères' : null,
             ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _confirm,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Confirmer'),
-              validator: (v) => v != _next.text ? 'Les mots de passe ne correspondent pas' : null,
+              decoration: const InputDecoration(labelText: 'Confirmez le nouveau'),
+              validator: (v) => v != _next.text ? 'Les deux mots de passe sont différents' : null,
             ),
           ],
         ),
@@ -241,7 +367,11 @@ class _ChangeMasterPasswordDialogState extends State<_ChangeMasterPasswordDialog
           onPressed: _busy ? null : () => Navigator.pop(context, false),
           child: const Text('Annuler'),
         ),
-        FilledButton(onPressed: _busy ? null : _submit, child: const Text('Valider')),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+          onPressed: _busy ? null : _submit,
+          child: const Text('Modifier'),
+        ),
       ],
     );
   }

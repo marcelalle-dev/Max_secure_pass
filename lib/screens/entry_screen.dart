@@ -3,16 +3,18 @@ import 'package:flutter/material.dart';
 import '../models/vault_entry.dart';
 import '../services/secure_clipboard.dart';
 import '../services/vault_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/brand.dart';
 import '../widgets/strength_meter.dart';
 import 'generator_sheet.dart';
 
-/// Création ou modification d'une entrée du coffre.
+/// Création ou modification d'un identifiant.
 class EntryScreen extends StatefulWidget {
   const EntryScreen({super.key, required this.vault, this.entry});
 
   final VaultService vault;
 
-  /// `null` pour créer une nouvelle entrée.
+  /// `null` pour créer un nouvel identifiant.
   final VaultEntry? entry;
 
   @override
@@ -27,6 +29,7 @@ class _EntryScreenState extends State<EntryScreen> {
   late final _url = TextEditingController(text: widget.entry?.url);
   late final _notes = TextEditingController(text: widget.entry?.notes);
   bool _obscure = true;
+  bool _saving = false;
 
   bool get _isNew => widget.entry == null;
 
@@ -40,6 +43,7 @@ class _EntryScreenState extends State<EntryScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
     final entry = (widget.entry ?? VaultEntry(title: '')).copyWith(
       title: _title.text.trim(),
       username: _username.text.trim(),
@@ -55,11 +59,15 @@ class _EntryScreenState extends State<EntryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer cette entrée ?'),
-        content: Text('« ${widget.entry!.title} » sera définitivement supprimée.'),
+        title: Text('Supprimer ${widget.entry!.title} ?'),
+        content: const Text('Cet identifiant sera définitivement retiré du coffre.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
           FilledButton(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Supprimer'),
           ),
@@ -80,55 +88,69 @@ class _EntryScreenState extends State<EntryScreen> {
     if (value.isEmpty) return;
     await SecureClipboard.copy(value);
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$label copié (effacé dans 30 s)')));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('$label copié. Effacé dans 30 s.')));
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isNew ? 'Nouvelle entrée' : 'Modifier'),
+        title: Text(_isNew ? 'Nouvel identifiant' : 'Identifiant'),
         actions: [
           if (!_isNew)
             IconButton(
               tooltip: 'Supprimer',
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(Icons.delete_outline_rounded),
               onPressed: _delete,
             ),
-          IconButton(tooltip: 'Enregistrer', icon: const Icon(Icons.check), onPressed: _save),
+          const SizedBox(width: 4),
         ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
-            TextFormField(
-              key: const Key('title'),
-              controller: _title,
-              autofocus: _isNew,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Titre',
-                hintText: 'ex. : Gmail, Banque…',
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Le titre est obligatoire' : null,
+            Row(
+              children: [
+                ListenableBuilder(
+                  listenable: _title,
+                  builder: (context, _) => ShieldAvatar(label: _title.text.trim()),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('title'),
+                    controller: _title,
+                    autofocus: _isNew,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: theme.textTheme.titleMedium,
+                    decoration: const InputDecoration(
+                      labelText: 'Titre',
+                      hintText: 'Gmail, banque, Wi-Fi…',
+                    ),
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Donnez un titre à cet identifiant' : null,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             TextFormField(
               key: const Key('username'),
               controller: _username,
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
               decoration: InputDecoration(
-                labelText: 'Identifiant / e-mail',
-                border: const OutlineInputBorder(),
+                labelText: 'Identifiant ou e-mail',
+                prefixIcon: const Icon(Icons.person_outline_rounded),
                 suffixIcon: IconButton(
                   tooltip: 'Copier l\'identifiant',
-                  icon: const Icon(Icons.copy),
+                  icon: const Icon(Icons.content_copy_rounded, size: 20),
                   onPressed: () => _copy(_username.text, 'Identifiant'),
                 ),
               ),
@@ -141,35 +163,38 @@ class _EntryScreenState extends State<EntryScreen> {
               autocorrect: false,
               enableSuggestions: false,
               onChanged: (_) => setState(() {}),
+              style: const TextStyle(fontFamily: AppTheme.monoFamily, fontSize: 17),
               decoration: InputDecoration(
                 labelText: 'Mot de passe',
-                border: const OutlineInputBorder(),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: _obscure ? 'Afficher' : 'Masquer',
-                      icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscure = !_obscure),
-                    ),
-                    IconButton(
-                      tooltip: 'Générer',
-                      icon: const Icon(Icons.casino_outlined),
-                      onPressed: _generate,
-                    ),
-                    IconButton(
-                      tooltip: 'Copier le mot de passe',
-                      icon: const Icon(Icons.copy),
-                      onPressed: () => _copy(_password.text, 'Mot de passe'),
-                    ),
-                  ],
+                prefixIcon: const Icon(Icons.key_rounded),
+                suffixIcon: IconButton(
+                  tooltip: _obscure ? 'Afficher' : 'Masquer',
+                  icon: Icon(_obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                  onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
             ),
             if (_password.text.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               StrengthMeter(password: _password.text),
             ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: _generate,
+                  icon: const Icon(Icons.password_rounded),
+                  label: const Text('Générer'),
+                ),
+                TextButton.icon(
+                  onPressed: _password.text.isEmpty
+                      ? null
+                      : () => _copy(_password.text, 'Mot de passe'),
+                  icon: const Icon(Icons.content_copy_rounded, size: 20),
+                  label: const Text('Copier'),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             TextFormField(
               key: const Key('url'),
@@ -178,7 +203,7 @@ class _EntryScreenState extends State<EntryScreen> {
               autocorrect: false,
               decoration: const InputDecoration(
                 labelText: 'Site web',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.language_rounded),
               ),
             ),
             const SizedBox(height: 16),
@@ -187,13 +212,23 @@ class _EntryScreenState extends State<EntryScreen> {
               controller: _notes,
               minLines: 3,
               maxLines: 8,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
+              decoration: const InputDecoration(labelText: 'Notes', alignLabelWithHint: true),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + MediaQuery.viewInsetsOf(context).bottom),
+          child: FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: scheme.primary),
+                  )
+                : Text(_isNew ? 'Ajouter au coffre' : 'Enregistrer'),
+          ),
         ),
       ),
     );
