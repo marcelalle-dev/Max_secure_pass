@@ -11,6 +11,8 @@ Gestionnaire de mots de passe Flutter, hors ligne : vos identifiants ne quittent
 - **Générateur de mots de passe** : longueur de 8 à 64, minuscules, majuscules, chiffres et symboles, avec un indicateur de robustesse.
 - **Presse-papiers sécurisé** : une valeur copiée est effacée automatiquement après 30 secondes.
 - **Verrouillage automatique** dès que l'application passe en arrière-plan, plus un bouton de verrouillage manuel.
+- **Déverrouillage par empreinte ou code du téléphone** (Android), activable depuis le menu ou
+  proposé juste après la création du coffre. Le mot de passe maître reste toujours utilisable.
 - **Changement du mot de passe maître**, qui rechiffre tout le coffre.
 - **Android** : captures d'écran bloquées et contenu masqué dans les applications récentes (`FLAG_SECURE`).
 
@@ -21,9 +23,17 @@ Gestionnaire de mots de passe Flutter, hors ligne : vos identifiants ne quittent
 | Chiffrement | AES-256-GCM (chiffrement authentifié : une altération ou un mauvais mot de passe sont détectés) |
 | Dérivation de clé | PBKDF2-HMAC-SHA256, 600 000 itérations (recommandation OWASP), sel aléatoire de 16 octets |
 | Stockage | Un seul fichier `vault.json` chiffré dans le répertoire privé de l'application, écrit de façon atomique |
+| Empreinte ou code | La clé du coffre est conservée par `flutter_secure_storage`, chiffrée par une clé AES du Keystore Android créée avec `setUserAuthenticationRequired(true)` : le système ne la rend utilisable qu'après l'empreinte ou le code, à chaque lecture |
 
 La clé et les entrées déchiffrées ne restent en mémoire que tant que le coffre est déverrouillé.
 **Le mot de passe maître ne peut pas être récupéré** : en cas d'oubli, le coffre est perdu.
+
+L'application ne demande pas l'autorisation Internet : en version release, elle ne peut rien
+envoyer sur le réseau.
+
+Si la clé enregistrée ne correspond plus au coffre (par exemple après un changement du
+verrouillage d'écran), le déverrouillage par le téléphone est désactivé et le mot de passe maître
+est demandé. Une annulation ou un échec passager (trop d'essais) ne le désactive pas.
 
 La dérivation PBKDF2 est implémentée dans `lib/services/pbkdf2.dart`. Cette version optimisée est
 environ 4 fois plus rapide que l'implémentation générique en Dart pur. Elle est vérifiée par les
@@ -61,6 +71,7 @@ lib/
     vault_storage.dart       Stockage fichier (et mémoire pour les tests)
     password_generator.dart  Générateur et estimation de robustesse
     secure_clipboard.dart    Copie avec effacement automatique
+    device_unlock.dart       Déverrouillage par empreinte ou code (Keystore)
   theme/app_theme.dart       Couleurs, typographie et composants
   screens/                   Verrouillage, liste, édition, générateur
   widgets/                   Logo, bouclier, jauge de robustesse, affichage des mots de passe

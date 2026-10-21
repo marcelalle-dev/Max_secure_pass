@@ -6,6 +6,8 @@ import 'package:maxsecurepass/services/vault_cipher.dart';
 import 'package:maxsecurepass/services/vault_service.dart';
 import 'package:maxsecurepass/services/vault_storage.dart';
 
+import 'fake_device_unlock.dart';
+
 void main() {
   late VaultService vault;
 
@@ -92,5 +94,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Netflix'), findsOneWidget);
     expect(find.text('Banque'), findsNothing);
+  });
+
+  testWidgets('propose l\'empreinte à l\'ouverture, pas après un verrouillage volontaire', (
+    tester,
+  ) async {
+    usePhoneScreen(tester);
+    final device = FakeDeviceUnlock();
+    final storage = MemoryVaultStorage();
+    VaultService service() =>
+        VaultService(storage: storage, cipher: VaultCipher(iterations: 1000), deviceUnlock: device);
+    await tester.runAsync(() async {
+      final setup = service();
+      await setup.init();
+      await setup.create('correct horse battery');
+      await setup.save(VaultEntry(title: 'Gmail'));
+      await setup.enableDeviceUnlock();
+      vault = service();
+      await vault.init();
+    });
+    device.prompts = 0;
+
+    // Ouverture de l'application : la demande s'affiche d'elle-même.
+    await tester.pumpWidget(MaxSecurePassApp(vault: vault));
+    await settle(tester);
+    expect(device.prompts, 1);
+    expect(find.text('Gmail'), findsOneWidget);
+
+    // Verrouillage volontaire : pas de nouvelle demande automatique.
+    await tester.tap(find.byTooltip('Verrouiller'));
+    await settle(tester);
+    expect(device.prompts, 1);
+    expect(find.text('Empreinte ou code'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Empreinte ou code'));
+    await tester.tap(find.text('Empreinte ou code'));
+    await settle(tester);
+    expect(device.prompts, 2);
+    expect(find.text('Gmail'), findsOneWidget);
   });
 }

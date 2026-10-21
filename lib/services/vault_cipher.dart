@@ -56,23 +56,43 @@ class VaultCipher {
 
   /// Déchiffre [data] et renvoie le texte clair ainsi que la clé dérivée.
   Future<(String, VaultKey)> decrypt(String data, String password) async {
-    final json = jsonDecode(data) as Map<String, dynamic>;
-    if (json['version'] != formatVersion) {
-      throw FormatException('Version de coffre non prise en charge : ${json['version']}');
-    }
+    final json = _parse(data);
     final key = await _deriveKey(
       password,
       base64Decode(json['salt'] as String),
       json['iterations'] as int,
     );
+    return (await _open(json, key), key);
+  }
+
+  /// Déchiffre [data] avec une clé déjà dérivée (déverrouillage par le
+  /// téléphone), sans recalculer PBKDF2.
+  Future<(String, VaultKey)> decryptWithKey(String data, List<int> keyBytes) async {
+    final json = _parse(data);
+    final key = VaultKey(
+      SecretKey(keyBytes),
+      base64Decode(json['salt'] as String),
+      json['iterations'] as int,
+    );
+    return (await _open(json, key), key);
+  }
+
+  Map<String, dynamic> _parse(String data) {
+    final json = jsonDecode(data) as Map<String, dynamic>;
+    if (json['version'] != formatVersion) {
+      throw FormatException('Version de coffre non prise en charge : ${json['version']}');
+    }
+    return json;
+  }
+
+  Future<String> _open(Map<String, dynamic> json, VaultKey key) async {
     final box = SecretBox(
       base64Decode(json['ciphertext'] as String),
       nonce: base64Decode(json['nonce'] as String),
       mac: Mac(base64Decode(json['mac'] as String)),
     );
     try {
-      final clear = await _aes.decrypt(box, secretKey: key.secretKey);
-      return (utf8.decode(clear), key);
+      return utf8.decode(await _aes.decrypt(box, secretKey: key.secretKey));
     } on SecretBoxAuthenticationError {
       throw const WrongPasswordException();
     }

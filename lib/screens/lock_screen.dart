@@ -31,6 +31,41 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
 
   bool get _creating => widget.vault.status == VaultStatus.uninitialized;
 
+  bool get _deviceUnlock => !_creating && widget.vault.deviceUnlockEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    // Au démarrage ou au retour dans l'application, on propose directement
+    // l'empreinte ; pas après un verrouillage volontaire.
+    if (_deviceUnlock && !widget.vault.lockedByUser) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _unlockWithDevice());
+    }
+  }
+
+  Future<void> _unlockWithDevice() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final outcome = await widget.vault.unlockWithDevice();
+    if (!mounted || outcome == DeviceUnlockOutcome.unlocked) return;
+    setState(() {
+      _busy = false;
+      _error = switch (outcome) {
+        DeviceUnlockOutcome.failed =>
+          'Empreinte ou code indisponible pour le moment. '
+              'Saisissez votre mot de passe maître.',
+        DeviceUnlockOutcome.disabled =>
+          'Le téléphone ne reconnaît plus votre clé, par exemple après un changement du '
+              'verrouillage d\'écran. Saisissez votre mot de passe maître, puis réactivez '
+              'l\'empreinte depuis le menu.',
+        _ => null,
+      };
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -108,7 +143,7 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
       key: const Key('masterPassword'),
       controller: _password,
       obscureText: _obscure,
-      autofocus: !_creating,
+      autofocus: !_creating && !_deviceUnlock,
       enabled: !_busy,
       style: const TextStyle(fontSize: 17),
       decoration: InputDecoration(
@@ -145,6 +180,8 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
           _creating
               ? 'Ce mot de passe maître chiffre tous vos identifiants. Il ne peut pas '
                     'être récupéré en cas d\'oubli : notez-le en lieu sûr.'
+              : _deviceUnlock
+              ? 'Utilisez votre empreinte, le code du téléphone ou votre mot de passe maître.'
               : 'Saisissez votre mot de passe maître pour accéder à vos identifiants.',
           style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
@@ -186,6 +223,14 @@ class _LockScreenState extends State<LockScreen> with TickerProviderStateMixin {
                 )
               : Text(_creating ? 'Créer le coffre' : 'Déverrouiller'),
         ),
+        if (_deviceUnlock) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _unlockWithDevice,
+            icon: const Icon(Icons.fingerprint_rounded, size: 26),
+            label: const Text('Empreinte ou code'),
+          ),
+        ],
       ],
     );
   }

@@ -19,7 +19,8 @@ android {
         applicationId = "dev.marcelalle.maxsecurepass"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // flutter_secure_storage (déverrouillage par empreinte) exige Android 7.
+        minSdk = maxOf(24, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -42,4 +43,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Thème AppCompat requis par la boîte de dialogue d'empreinte (BiometricPrompt).
+    implementation("androidx.appcompat:appcompat:1.7.1")
 }

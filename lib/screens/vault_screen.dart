@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/vault_entry.dart';
+import '../services/device_unlock.dart';
 import '../services/secure_clipboard.dart';
 import '../services/vault_service.dart';
 import '../widgets/brand.dart';
@@ -19,6 +20,66 @@ class VaultScreen extends StatefulWidget {
 
 class _VaultScreenState extends State<VaultScreen> {
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _offerDeviceUnlock());
+  }
+
+  Future<void> _offerDeviceUnlock() async {
+    if (!mounted || !widget.vault.takeDeviceUnlockOffer()) return;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.fingerprint_rounded,
+          size: 40,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        title: const Text('Déverrouiller plus vite ?'),
+        content: const Text(
+          'Ouvrez votre coffre avec votre empreinte ou le code de votre téléphone. '
+          'Le mot de passe maître restera toujours utilisable.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Plus tard'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Activer'),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) await _setDeviceUnlock(true);
+  }
+
+  Future<void> _setDeviceUnlock(bool enabled) async {
+    final messenger = ScaffoldMessenger.of(context);
+    String message;
+    if (!enabled) {
+      await widget.vault.disableDeviceUnlock();
+      message = 'Déverrouillage par empreinte ou code désactivé';
+    } else {
+      try {
+        await widget.vault.enableDeviceUnlock();
+        message = 'Déverrouillage par empreinte ou code activé';
+      } on DeviceUnlockCancelled {
+        return;
+      } on DeviceUnlockFailure {
+        message =
+            'Impossible d\'activer le déverrouillage. Vérifiez qu\'un code ou une empreinte '
+            'est configuré sur le téléphone.';
+      }
+    }
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
 
   void _open([VaultEntry? entry]) {
     Navigator.push(
@@ -74,12 +135,18 @@ class _VaultScreenState extends State<VaultScreen> {
           IconButton(
             tooltip: 'Verrouiller',
             icon: const Icon(Icons.lock_rounded),
-            onPressed: widget.vault.lock,
+            onPressed: () => widget.vault.lock(byUser: true),
           ),
           PopupMenuButton<void>(
             tooltip: 'Plus d\'options',
             icon: const Icon(Icons.more_vert_rounded),
             itemBuilder: (_) => [
+              if (widget.vault.deviceUnlockAvailable)
+                CheckedPopupMenuItem(
+                  checked: widget.vault.deviceUnlockEnabled,
+                  onTap: () => _setDeviceUnlock(!widget.vault.deviceUnlockEnabled),
+                  child: const Text('Déverrouiller avec l\'empreinte ou le code'),
+                ),
               PopupMenuItem(
                 onTap: _changeMasterPassword,
                 child: const Text('Changer le mot de passe maître'),
